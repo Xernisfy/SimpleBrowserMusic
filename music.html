@@ -7,7 +7,7 @@
   <script type="text/javascript">(function () {
       'use strict';
       document.addEventListener('DOMContentLoaded', function () {
-        // helper function to assign multiple properties to an object
+        // helper function to assign multiple properties to an object recursively
         function set(e, as) {
           for (let a in as) {
             if (as[a].constructor.name === 'Object') {
@@ -42,14 +42,18 @@
         }
         // helper function to track slider position
         let originalTarget;
-        function dragSlider(e, track, callback) { // e = MouseEvent
-          if (e.buttons === 1) {
+        function dragSlider(mouseEvent, track, callback) {
+          // activate on left mouse button press
+          if (mouseEvent.buttons === 1) {
+            // save current event target
             if (!originalTarget) {
-              originalTarget = e.target;
+              originalTarget = mouseEvent.target;
             }
+            // pass on slider percentage
             if (originalTarget === track) {
-              callback(Math.min(Math.max((e.clientX - track.getBoundingClientRect().left) / track.clientWidth * 100, 0), 100));
+              callback(Math.min(Math.max((mouseEvent.clientX - track.getBoundingClientRect().left) / track.clientWidth * 100, 0), 100));
             }
+          // deactivate on left mouse button release
           } else {
             originalTarget = undefined;
           }
@@ -75,13 +79,15 @@
               borderRadius: '200px'
             }
           });
+          // track slider position while dragging
           window.addEventListener('mousemove', (e) => {
             dragSlider(e, track, callback);
           });
+          // track slider position on first click
           track.addEventListener('mousedown', (e) => {
             dragSlider(e, track, callback);
           })
-          return [track, slider];
+          return slider;
         }
         // create a 'select' element, include all given elements as 'option's and save the according audios
         function listFiles(list) {
@@ -99,9 +105,9 @@
           }
         }
         // turn a relative path to an mp3 file into an audio element
-        // (loading of the actual sound file apparently starts asynchronous once this element is created)
         function audio(file) {
           const audio = create('audio', false, {
+            // loading of the actual sound file apparently starts asynchronous once this element is created which should be prevented
             preload: 'none'
           });
           create('source', audio, {
@@ -114,13 +120,14 @@
         function update() {
           timelineSlider.style.width = (currentAudio.currentTime / currentAudio.duration * 100) + '%';
         }
+        // TODO
         function changeTrack(idx) {
 
         }
-        let select, audios = [], currentAudio, currentAudioIdx, interval;
+        let select, audios = [], currentAudio, currentAudioIdx, interval, volume = 0.1, timeline = 0;
         // play button
         const play = create('button', document.body, {
-          innerText: String.fromCharCode(0x23F5) // 'play'
+          innerText: String.fromCharCode(0x23F5) // 'right arrow'
         });
         play.addEventListener('click', () => {
           if (currentAudioIdx != select.value) {
@@ -142,7 +149,7 @@
         });
         // pause button
         const pause = create('button', document.body, {
-          innerText: String.fromCharCode(0x23F8) // 'pause'
+          innerText: String.fromCharCode(0x23F8) // 'two blocks'
         });
         pause.addEventListener('click', () => {
           if (currentAudio) {
@@ -154,18 +161,18 @@
         });
         // previous button
         const previous = create('button', document.body, {
-          innerText: String.fromCharCode(0x23EE)
+          innerText: String.fromCharCode(0x23EE) // 'double left arrow with block'
         });
         previous.addEventListener('click', () => {
           if (currentAudio) {
             currentAudio.pause();
           }
         });
-        // next button
-        // shuffle button
+        // TODO: next button
+        // TODO: shuffle button
         // loop button
         const loop = create('button', document.body, {
-          innerText: String.fromCharCode(0x2B6E), // 'loop'
+          innerText: String.fromCharCode(0x2B6E), // 'self-chasing arrow'
           dataset: {
             active: '1'
           }
@@ -183,15 +190,14 @@
             currentAudio.loop = Boolean(parseInt(loop.dataset.active));
           }
         });
-        // cross-fade button
+        // TODO: cross-fade button
         /*
         const cross = create('button', document.body, {
-          innerText: String.fromCharCode(0x292E) // intertwined arrows
+          innerText: String.fromCharCode(0x292E) // 'intertwined arrows'
         });
         */
         // volume slider
-        let volume = 0.1;
-        const [volumeTrack, volumeSlider] = createSlider(document.body, 100, 8, volume * 100, '#3f7fff', (percent) => {
+        const volumeSlider = createSlider(document.body, 100, 8, volume * 100, '#3f7fff', (percent) => {
           volume = percent / 100;
           if (currentAudio) {
             currentAudio.volume = volume;
@@ -210,8 +216,7 @@
           }
         });
         // timeline
-        let timeline = 0;
-        const [timelineTrack, timelineSlider] = createSlider(document.body, 400, 8, 0, '#7fff3f', (percent)=>{
+        const timelineSlider = createSlider(document.body, 400, 8, 0, '#7fff3f', (percent)=>{
           if (currentAudio) {
             currentAudio.currentTime = percent / 100 * currentAudio.duration;
             update();

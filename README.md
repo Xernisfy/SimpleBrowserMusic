@@ -10,3 +10,7 @@ Listen to local music files in your browser
 - Normal media player features, nothing special
 - Does not require an external media player, only the internet browser of your choice
 - It's html so you can customize as you want with css and js
+
+### Known issues
+- Script has to be executed again, if music files were added, renamed or removed to update the list
+- Ampersand signs (&) in directory or file names may cause issues with the batch script, because they are reserved special characters
