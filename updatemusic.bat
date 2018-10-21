@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001
 cls
 
@@ -11,7 +12,7 @@ exit
 :findMusic
   for /d %%d in (*) do (
     chdir "%%d"
-    call :findMusic
+    call :findMusic %*%%d\
     chdir ..
   )
-  for %%f in (*.mp3) do echo %cd%\%%f>>"%startDir%\music.txt"
+  for %%f in (*.mp3) do echo %*%%f>>"%startDir%\music.txt"
