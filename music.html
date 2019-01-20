@@ -1,9 +1,10 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <title>Music player</title>
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-    <script type="text/javascript">(function () {
+    <script type="text/javascript">
+      (function () {
         'use strict';
         document.addEventListener('DOMContentLoaded', function () {
           // helper function to assign multiple properties to an object recursively
@@ -42,6 +43,7 @@
           // helper function to track slider position
           let originalTarget;
           function dragSlider(mouseEvent, track, callback) {
+            mouseEvent.preventDefault();
             // activate on left mouse button press
             if (mouseEvent.buttons === 1) {
               // save current event target
@@ -50,7 +52,7 @@
               }
               // pass on slider percentage
               if (originalTarget === track) {
-                callback(Math.min(Math.max((mouseEvent.clientX - track.getBoundingClientRect().left) / track.clientWidth * 100, 0), 100));
+                callback(Math.floor(Math.min(Math.max(((mouseEvent.clientX - track.getBoundingClientRect().left) / track.clientWidth) * 100, 0), 100)));
               }
               // deactivate on left mouse button release
             } else {
@@ -85,13 +87,16 @@
             // track slider position on first click
             track.addEventListener('mousedown', (e) => {
               dragSlider(e, track, callback);
-            })
+            });
             return slider;
           }
           // create a 'select' element, include all given elements as 'option's and save the according audios
           function listFiles(list) {
             let options, option;
             select = create('select', document.body);
+            select.addEventListener('wheel', (e) => {
+              select.value = (select.children.length + parseInt(select.value) + (e.deltaY < 0 ? -1 : 1)) % select.children.length;
+            });
             options = list.split('\n');
             for (let o = 0; o < options.length; o++) {
               if (options[o] !== '') {
@@ -118,17 +123,33 @@
           // update the timeline with the current time
           function update() {
             if (currentAudio.currentTime && currentAudio.duration) {
-              timelineSlider.style.width = (currentAudio.currentTime / currentAudio.duration * 100) + '%';
+              timelineSlider.style.width = (currentAudio.currentTime / currentAudio.duration) * 100 + '%';
             }
           }
           // TODO
-          function changeTrack(idx) {
-
+          function changeTrack(idx, relative) {
+            if (relative) {
+              currentAudioIdx = (currentAudioIdx + idx) % audios.length;
+            } else {
+              currentAudioIdx = idx;
+            }
+            currentAudio = audios[currentAudioIdx].cloneNode(true);
+            currentAudio.volume = volume;
+            currentAudio.playbackRate = speed;
+            currentAudio.loop = Boolean(parseInt(loop.dataset.active));
+            currentAudio.addEventListener('durationchange', update);
+            currentAudio.addEventListener('timeupdate', update);
           }
-          let select, audios = [], currentAudio, currentAudioIdx, volume = 0.1, timeline = 0;
+          let select,
+            audios = [],
+            currentAudio,
+            currentAudioIdx = 0,
+            volume = 0.1,
+            timeline = 0,
+            speed = 1;
           // play button
           const play = create('button', document.body, {
-            innerText: String.fromCharCode(0x23F5) // 'right arrow'
+            innerText: String.fromCharCode(0x23f5) // 'right arrow'
           });
           play.addEventListener('click', () => {
             if (currentAudioIdx != select.value) {
@@ -138,18 +159,13 @@
               currentAudio = undefined;
             }
             if (!currentAudio) {
-              currentAudioIdx = parseInt(select.value);
-              currentAudio = audios[currentAudioIdx].cloneNode(true);
-              currentAudio.volume = volume;
-              currentAudio.loop = Boolean(parseInt(loop.dataset.active));
-              currentAudio.addEventListener('durationchange', update);
-              currentAudio.addEventListener('timeupdate', update);
+              changeTrack(parseInt(select.value));
             }
             currentAudio.play();
           });
           // pause button
           const pause = create('button', document.body, {
-            innerText: String.fromCharCode(0x23F8) // 'two blocks'
+            innerText: String.fromCharCode(0x23f8) // 'two blocks'
           });
           pause.addEventListener('click', () => {
             if (currentAudio) {
@@ -158,26 +174,32 @@
           });
           // previous button
           const previous = create('button', document.body, {
-            innerText: String.fromCharCode(0x23EE) // 'double left arrow with block'
+            innerText: String.fromCharCode(0x23ee) // 'double left arrow with block'
           });
           previous.addEventListener('click', () => {
             if (currentAudio) {
               currentAudio.pause();
             }
-            currentAudioIdx = Math.max(0, currentAudioIdx - 1);
-            currentAudio = audios[currentAudioIdx].cloneNode(true);
-            currentAudio.volume = volume;
-            currentAudio.loop = Boolean(parseInt(loop.dataset.active));
-            currentAudio.addEventListener('durationchange', update);
-            currentAudio.addEventListener('timeupdate', update);
+            changeTrack(-1, true);
             currentAudio.play();
             select.value = currentAudioIdx;
           });
-          // TODO: next button
+          // next button
+          const next = create('button', document.body, {
+            innerText: String.fromCharCode(0x23ed) // 'double right arrow with block'
+          });
+          next.addEventListener('click', () => {
+            if (currentAudio) {
+              currentAudio.pause();
+            }
+            changeTrack(+1, true);
+            currentAudio.play();
+            select.value = currentAudioIdx;
+          });
           // TODO: shuffle button
           // loop button
           const loop = create('button', document.body, {
-            innerText: String.fromCharCode(0x2B6E), // 'self-chasing arrow'
+            innerText: String.fromCharCode(0x2b6e), // 'self-chasing arrow'
             dataset: {
               active: '1'
             }
@@ -212,7 +234,7 @@
           });
           // volume display
           const volumeDisplay = create('span', document.body, {
-            innerText: (volume * 100) + '%',
+            innerText: volume * 100 + '%',
             style: {
               display: 'inline-block',
               width: '40px',
@@ -223,18 +245,39 @@
           // timeline
           const timelineSlider = createSlider(document.body, 400, 8, 0, '#7fff3f', (percent) => {
             if (currentAudio) {
-              currentAudio.currentTime = percent / 100 * currentAudio.duration;
+              currentAudio.currentTime = (percent / 100) * currentAudio.duration;
               update();
+            }
+          });
+          // speed control
+          const speedSlider = createSlider(document.body, 100, 8, speed * 50, '#ff7f3f', (percent) => {
+            speed = Math.max(0.5, percent / 50);
+            if (currentAudio) {
+              currentAudio.playbackRate = speed;
+            }
+            speedSlider.style.width = speed * 50 + '%';
+            speedDisplay.innerText = 'x' + (Math.floor(speed * 100) / 100);
+          });
+          // speed display
+          const speedDisplay = create('span', document.body, {
+            innerText: 'x' + speed,
+            style: {
+              display: 'inline-block',
+              width: '40px',
+              textAlign: 'left',
+              padding: '0px 8px'
             }
           });
           // request the file containing the relative paths to all the audio files
           xhr('music.txt');
         });
-      })();</script>
+      })();
+    </script>
     <style type="text/css">
       * {
         font-family: 'Segoe UI', sans-serif;
       }
+
     </style>
   </head>
   <body></body>
