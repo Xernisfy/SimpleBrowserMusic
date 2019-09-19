@@ -90,6 +90,12 @@
             });
             return slider;
           }
+          // helper function for displaying ms as HH:MM:SS
+          function formatTime(max, cur) {
+            console.clear();
+            console.log(max);
+            console.log(cur);
+          }
           // create a 'select' element, include all given elements as 'option's and save the according audios
           function listFiles(list) {
             let options, option;
@@ -242,11 +248,22 @@
               padding: '0px 8px'
             }
           });
-          // timeline
+          // timeline control
           const timelineSlider = createSlider(document.body, 400, 8, 0, '#7fff3f', (percent) => {
             if (currentAudio) {
               currentAudio.currentTime = (percent / 100) * currentAudio.duration;
               update();
+            }
+            timelineDisplay.innerText = formatTime(currentAudio.duration, currentAudio.currentTime);
+          });
+          // timeline display
+          const timelineDisplay = create('span', document.body, {
+            innerText: formatTime(currentAudio.duration, currentAudio.currentTime),
+            style: {
+              display: 'inline-block',
+              width: '40px',
+              textAlign: 'left',
+              padding: '0px 8px'
             }
           });
           // speed control
